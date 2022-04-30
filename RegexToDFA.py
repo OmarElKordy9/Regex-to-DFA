@@ -172,11 +172,138 @@ class createNFA:
         [firstInput, firstFinal] = firstInput.numberState(2)    #one at the begining as start state and one at the end as final state. The start state is connected with the starts state 
         firstState = 1                                                                  #of the input. The final state of the input is connected to the final state with epsioln and the final
         secondState = firstFinal                                              # state is then connected with the start state to create the loop. After all this, the first input transitions 
-        plusOperation = AutomataLanguageLanguage()     #are added to the transitions dictionary.
+        plusOperation = AutomataLanguage()     #are added to the transitions dictionary.
         plusOperation.setStartState(firstState)
-        plusOperation.setfinalStates(secondState)
-        plusOperation.transitionStates(plusOperation.startState, firstInput.startState,AutomataLanguageLanguage.epsilon())
-        plusOperation.transitionStates(firstInput.finalStates[0], plusOperation.finalStates[0], AutomataLanguageLanguage.epsilon())
-        plusOperation.transitionStates(plusOperation.finalStates[0], plusOperation.startState, AutomataLanguageLanguage.epsilon())
+        plusOperation.setFinalStates(secondState)
+        plusOperation.transitionStates(plusOperation.startState, firstInput.startState,AutomataLanguage.epsilon())
+        plusOperation.transitionStates(firstInput.finalStates[0], plusOperation.finalStates[0], AutomataLanguage.epsilon())
+        plusOperation.transitionStates(plusOperation.finalStates[0], plusOperation.startState, AutomataLanguage.epsilon())
         plusOperation.transitionStates(firstInput.transitions)
         return plusOperation
+
+
+#class for converting the regex to NFA
+class RegexToNFA:
+
+    def __init__(self, regex):                                          #method to define what is the star and what is the or operator and all the things that might be written in the regex
+        self.star = '*'                                                         #The alphabet is also defined to accept any lowercase letter, any uppercase letter and any number.
+        self.oring = '|'
+        self.concat = '.'
+        self.openedBracket = '('
+        self.closedBracket = ')'
+        self.operators = [self.oring, self.concat]
+        self.regex = regex
+        self.alphabet = [chr(i) for i in range(65,91)]
+        self.alphabet.extend([chr(i) for i in range(97,123)])
+        self.alphabet.extend([chr(i) for i in range(48,58)])
+        self.scanBuildNFA()
+
+    def scanBuildNFA(self):                                              #method that scan the regex and responsible for the logics of creating the NFA by storing the operators and the opened
+        language = set()                                                      #brackets in the opStack and also checks the brackets if they are balaned or not. The automataStack is responsible
+        self.opStack = []                                                      #for creating the automata step by step and putting them in the stack until an operation comes and collects them together
+        self.checkStack = []                                                #then the new automata is added to the automataStack at the end.
+        self.automataStack = []
+        previous = "::e::"        #previous is defined to check the previous character of the character we are scanning. It is defined as :e: as for the first character it should by epsilon
+
+
+        for char in self.regex:     #looping on th characters in the regex
+
+            #CASE 1: character is alphabet ----- we check if the previous character is not dot and it is an alphabet or closed bracket or star to handle the case that the user
+            #may write AB which means A.B, he may write (A)B which means (A).B, he may alsow write A*B which means A*.B
+            if char in self.alphabet:
+                language.add(char)
+                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star]):
+                    self.addToOpStack(self.concat)              #handling the concatination cases and sending the concat to another function to work on it
+                self.automataStack.append(createNFA.normalStructure(char))      #if it is character we build the NFA of that character and add it to the automataStack
+
+            #Case 2: character is opened bracket ----- we check the concatination cases as explained before. 
+            elif char  ==  self.openedBracket:
+                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star]):
+                    self.addToOpStack(self.concat)      #sending the concat character to another function to work on it.
+                self.opStack.append(char)                  #adding the opened bracket to the opStack to be accessed in another function
+                self.checkStack.append(char)            #adding the opened bracket also to the checkStack to check for the balance of the brackets later.
+
+            #Case 3: character is star  ----- we check for the exceptions that may happen that causes errors.
+            #Exceptions as .* or |* or (* or **
+            elif char == self.star:
+                if previous in self.operators or previous  == self.openedBracket or previous == self.star:
+                    raise BaseException("Error processing '%s' after '%s'" % (char, previous))
+                self.workOnOperator(char)           #sending the star to another function to work on it.
+
+            #Case 4: character is concat or OR  ----- we check for the exceptions that may happen that causes errors.
+            #Exceptions as .. or .| or || or (. or (|
+            elif char in self.operators:
+                if previous in self.operators or previous  == self.openedBracket:
+                    raise BaseException("Error processing '%s' after '%s'" % (char, previous))
+                else:
+                    self.addToOpStack(char)         #sending the operaor to other function to work on it.
+
+            #Case 5: character is closed barcket we check for the exceptions that may happen that causes errors.
+            #Exceptions as .) or |) or stack is empty and doesn't have any operators inside
+            elif char  ==  self.closedBracket:
+                if previous in self.operators:
+                    raise BaseException("Error processing '%s' after '%s'" % (char, previous))
+                while(1):
+                    if len(self.opStack) == 0:
+                        raise BaseException("Error processing '%s'. Empty opStack" % char)
+                    o = self.opStack.pop()
+                    if o == self.openedBracket:
+                        break
+                    elif o in self.operators:
+                        self.workOnOperator(o)
+                if len(self.checkStack) == 0:
+                     raise BaseException("Error processing, brackets are incorrect")
+                else:
+                    self.checkStack.pop()
+
+            #Case 6: character is anything that we did not define should raise an exception that causes an error.
+            else:
+                raise BaseException("Symbol '%s' is not allowed" % char)
+            previous = char    #incrementing the previous at the end of each loop of scan to the next character
+
+        while len(self.opStack) != 0:           #work on the operators inside the stack until it is empty
+            op = self.opStack.pop()
+            self.workOnOperator(op)
+
+        if len(self.checkStack) != 0:           #check for the balance of the brackets and if they are unbalanced then an exception is raised.
+            raise BaseException("Error processing, brackets are incorrect")
+        
+        self.nfa = self.automataStack.pop()             #retrieving the last automata created
+        self.nfa.language = language                        #retrieving the language used in building the automata
+
+    def addToOpStack(self, char):               #checking for the coming operator to be able to process it correctly.
+        while(1):                       #looping on the opStack until it is empty
+            if len(self.opStack) == 0:
+                break
+            top = self.opStack[len(self.opStack)-1]          #retrieving the top of the stack and checking if it is an opened bracket then it will be appended to the opStack
+            if top == self.openedBracket:                           #and if it is a character or concat then it will be sent to another function to work on it and popping it from the opStack
+                break
+            if top == char or top == self.concat:
+                op = self.opStack.pop()
+                self.workOnOperator(op)
+            else:
+                break
+        self.opStack.append(char)
+
+    def workOnOperator(self, operator):             #method for working on the operators that comes to it to determine what to do with it.
+        if len(self.automataStack) == 0:                 #if the automataStack is empty then there is nothing to concat or nothing to OR then an exception will be raised.
+            raise BaseException("Error processing operator '%s'. opStack is empty" % operator)
+
+        #CASE 1: if the operator star then it only needs one input from the automataStack so it pops from the automataStack and send it to createNFA with the star structure.
+        if operator == self.star:
+            firstInput = self.automataStack.pop()
+            self.automataStack.append(createNFA.starStructure(firstInput))
+
+        #CASE 2: if the operator is concat or OR then it needs two inputs to work on. So it pops the first two inputs and save them and send each one fo them to the suitable structure.
+        elif operator in self.operators:
+            if len(self.automataStack) < 2:         #if the automataStack has less than two inouts and we need two inputs then an exception will be raised.
+                raise BaseException("Error processing operator '%s'. Inadequate operands" % operator)
+            firstInput = self.automataStack.pop()
+            secondInput = self.automataStack.pop()
+            if operator == self.oring:
+                self.automataStack.append(createNFA.orStructure(secondInput, firstInput))
+            elif operator == self.concat:
+                self.automataStack.append(createNFA.concatStructure(secondInput, firstInput))
+
+    def getNFA(self):
+        return self.nfa
