@@ -11,10 +11,14 @@ def main():
     dfaObj = DFAfromNFA(nfa)               #the variable nfa is then sent to the function DFAfromNFA to create the DFA
     dfa = dfaObj.getDFA()                       #after this we get the created DFA and store it in the variable dfa
 
+    print ("\nNFA: ")
+    nfaObj.displayNFA()
+    drawGraph(dfa, "dfa")
+     
+
     print ("\nDFA: ")
     dfaObj.displayDFA()
-
-    drawGraph(dfa, "dfa")
+    drawGraph(nfa, "nfa")
 
     print ("\nGraph is created in a png in the file explorer in the left of the window")
 

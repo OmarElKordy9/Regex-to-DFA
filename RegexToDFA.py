@@ -320,7 +320,7 @@ class RegexToNFA:
         return self.nfa
     
     def displayNFA(self):
-        self.nfa.display()
+        self.nfa.displayInCLI()
 
 #Class for building the DFA from the NFA that is created previously
 class DFAfromNFA:
