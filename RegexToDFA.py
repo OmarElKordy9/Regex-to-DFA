@@ -307,3 +307,62 @@ class RegexToNFA:
 
     def getNFA(self):
         return self.nfa
+    
+    def displayNFA(self):
+        self.nfa.display()
+
+class DFAfromNFA:
+
+    def __init__(self, nfa):
+        self.buildDFA(nfa)
+
+    def getDFA(self):
+        return self.dfa
+
+    def displayDFA(self):
+        self.dfa.displayInCLI()
+
+    def buildDFA(self, nfa):                            #Method that builds the dfa from the nfa and displays it and this will be the final step.
+        eClosureStates = dict()
+        eclose = dict()
+        count = 1
+        state1 = nfa.getEpsilonClosure(nfa.startState)          # combine the initial state with any other state with the transition epsilon
+        eclose[nfa.startState] = state1                                    # dict of nfa states + eclosure
+        dfa = AutomataLanguage(nfa.language)
+        dfa.setStartState(count)
+        states = [[state1, count]]                                              # one element dict of dfa states + eclosure
+        eClosureStates[count] = state1                                    # all elements dict of dfa states + eclosure
+        count +=  1
+        while len(states) != 0:                         #loop on the states until they are all done
+            [state, fromindex] = states.pop()   #get the first state with its index and pop it from the states to not be repeated again
+            for char in dfa.language:               #for each state we have, we loop on the characters and the alphabets that we have until we finish them.
+                transStates = nfa.getStateTransitions(state, char)      #get the transition of the state that we have and save its target states in transStates.
+                for s in list(transStates)[:]:        #loop on the transStates
+                    if s not in eclose:
+                        eclose[s] = nfa.getEpsilonClosure(s)            # combine two states when any state is connected with epsilon with another state.
+                    transStates = transStates.union(eclose[s])
+                if len(transStates) != 0:               #link the states with next state with its index if it is not present in any created state from before.
+                    if transStates not in eClosureStates.values():
+                        states.append([transStates, count])
+                        eClosureStates[count] = transStates
+                        toindex = count
+                        count +=  1
+                    else:                                   #if a state is present in any created state before then we should connect to the created state and not create a new one
+                        toindex = [k for k, v in eClosureStates.items() if v  ==  transStates][0]       # search in the allstates to connect the current state to the already existing state
+                    dfa.transitionStates(fromindex, toindex, char)
+        for value, state in eClosureStates.items():                     #loop on the states at the end and any state that is final in the NFA, make it final in the DFA
+            if nfa.finalStates[0] in state:
+                dfa.setFinalStates(value)
+        self.dfa = dfa
+
+
+def drawGraph(AutomataLanguage, file = ""):
+    f = popen(r"dot -Tpng -o graph%s.png" % file, 'w')     #popen function or method opens a pipe from this command the pipe allows the command to send
+                                                                                                                                 #its ouput to another command this is done to generate the png file from this command line
+    try:
+        f.write(AutomataLanguage.getDotFile())
+    except:
+        raise BaseException("Error creating graph")
+    finally:
+        f.close()
+
