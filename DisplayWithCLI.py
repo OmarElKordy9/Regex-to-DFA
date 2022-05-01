@@ -10,6 +10,7 @@ def main():
     nfa = nfaObj.getNFA()                       #after that we get the created NFA and store it in variable nfa
     dfaObj = DFAfromNFA(nfa)               #the variable nfa is then sent to the function DFAfromNFA to create the DFA
     dfa = dfaObj.getDFA()                       #after this we get the created DFA and store it in the variable dfa
+
     print ("\nDFA: ")
     dfaObj.displayDFA()
 
@@ -17,11 +18,10 @@ def main():
 
     print ("\nGraph is created in a png in the file explorer in the left of the window")
 
-
 if __name__  ==  '__main__':
-    t = time.time()
+    executuionTime = time.time()
     try:
         main()
     except BaseException as e:
         print ("\nFailure:", e)
-    print ("\nExecution time: ", time.time() - t, "seconds")
+    print ("\nExecution time: ", time.time() - executuionTime, "seconds")                #show the execution time of the program
