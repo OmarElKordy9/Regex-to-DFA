@@ -112,7 +112,6 @@ class AutomataLanguage:
 #class that defines the NFA structure from the normal structure, the concatenate, the OR and the repeatition
 class createNFA:
 
-    @staticmethod
     def normalStructure(inputChar):                                 #the normal structure when it recieves a character it creates 2 states with the first one as the start and the second one
         firstState = 1                                                             #as final and make transition between the two states with the given char
         secondState = 2
@@ -122,7 +121,6 @@ class createNFA:
         normal.transitionStates(1, 2, inputChar)
         return normal
 
-    @staticmethod
     def orStructure(firstInput, secondInput):                        #the or strructure which takes two inputs and or them together by creating two new states one that is the start state
         [firstInput, firstFinal] = firstInput.numberState(2)      # and other that is the final state and then takes the start state and connect it with the start states of the two inputs
         [secondInput, secondFinal] = secondInput.numberState(firstFinal)    #with epsilons and also take the fin al states of the two inputs and connect them with the final state 
@@ -139,7 +137,6 @@ class createNFA:
         orOperation.addTransition(secondInput.transitions)
         return orOperation
 
-    @staticmethod
     def concatStructure(firstInput, secondInput):           #the concatination structure which takes two inputs and concatemate them, sets the starts state as the first state in the 
         [firstInput, firstFinal] = firstInput.numberState(1) #first input then makes a final state as the last state in the second input and then it takes these and connect them with epsilon
         [secondInput, secondFinal] = secondInput.numberState(firstFinal)    #and add this in the transition dictionary to be used later in printing
@@ -153,7 +150,6 @@ class createNFA:
         concat.addTransition(secondInput.transitions)
         return concat
 
-    @staticmethod
     def starStructure(firstInput):                                          #the star structure is the repition structure and it takes only one input and then it repeats it. It creates two new states
         [firstInput, firstFinal] = firstInput.numberState(2)    #one at the begining as start state and one at the end as final state. The start state is connected with the starts state 
         firstState = 1                                                                  #of the input and the start state is also connected with epsilon with the finals state. The final state of the input is 
@@ -168,18 +164,18 @@ class createNFA:
         star.addTransition(firstInput.transitions)
         return star
 
-    def plusStructure(firstinput):                                          #the plus structure is the repition structure and it takes only one input and then it repeats it. It creates two new states
+    def plusStructure(firstInput):                                          #the plus structure is the repition structure and it takes only one input and then it repeats it. It creates two new states
         [firstInput, firstFinal] = firstInput.numberState(2)    #one at the begining as start state and one at the end as final state. The start state is connected with the starts state 
         firstState = 1                                                                  #of the input. The final state of the input is connected to the final state with epsioln and the final
         secondState = firstFinal                                              # state is then connected with the start state to create the loop. After all this, the first input transitions 
-        plusOperation = AutomataLanguage()     #are added to the transitions dictionary.
-        plusOperation.setStartState(firstState)
-        plusOperation.setFinalStates(secondState)
-        plusOperation.transitionStates(plusOperation.startState, firstInput.startState,AutomataLanguage.epsilon())
-        plusOperation.transitionStates(firstInput.finalStates[0], plusOperation.finalStates[0], AutomataLanguage.epsilon())
-        plusOperation.transitionStates(plusOperation.finalStates[0], plusOperation.startState, AutomataLanguage.epsilon())
-        plusOperation.transitionStates(firstInput.transitions)
-        return plusOperation
+        plus = AutomataLanguage()     #are added to the transitions dictionary.
+        plus.setStartState(firstState)
+        plus.setFinalStates(secondState)
+        plus.transitionStates(plus.startState, firstInput.startState,AutomataLanguage.epsilon())
+        plus.transitionStates(firstInput.finalStates[0], plus.finalStates[0], AutomataLanguage.epsilon())
+        plus.transitionStates(plus.finalStates[0], plus.startState, AutomataLanguage.epsilon())
+        plus.addTransition(firstInput.transitions)
+        return plus
 
 
 #class for converting the regex to NFA
@@ -187,6 +183,7 @@ class RegexToNFA:
 
     def __init__(self, regex):                                          #method to define what is the star and what is the or operator and all the things that might be written in the regex
         self.star = '*'                                                         #The alphabet is also defined to accept any lowercase letter, any uppercase letter and any number.
+        self.plus = '+'
         self.oring = '|'
         self.concat = '.'
         self.openedBracket = '('
@@ -230,7 +227,14 @@ class RegexToNFA:
                     raise BaseException("Error processing '%s' after '%s'" % (char, previous))
                 self.workOnOperator(char)           #sending the star to another function to work on it.
 
-            #Case 4: character is concat or OR  ----- we check for the exceptions that may happen that causes errors.
+             #Case 4: character is plus  ----- we check for the exceptions that may happen that causes errors.
+            #Exceptions as .+ or |+ or (+ or ++
+            elif char == self.plus:
+                if previous in self.operators or previous  == self.openedBracket or previous == self.plus:
+                    raise BaseException("Error processing '%s' after '%s'" % (char, previous))
+                self.workOnOperator(char)           #sending the plus to another function to work on it.
+
+            #Case 5: character is concat or OR  ----- we check for the exceptions that may happen that causes errors.
             #Exceptions as .. or .| or || or (. or (|
             elif char in self.operators:
                 if previous in self.operators or previous  == self.openedBracket:
@@ -238,7 +242,7 @@ class RegexToNFA:
                 else:
                     self.addToOpStack(char)         #sending the operaor to other function to work on it.
 
-            #Case 5: character is closed barcket we check for the exceptions that may happen that causes errors.
+            #Case 6: character is closed barcket we check for the exceptions that may happen that causes errors.
             #Exceptions as .) or |) or stack is empty and doesn't have any operators inside
             elif char  ==  self.closedBracket:
                 if previous in self.operators:
@@ -256,7 +260,7 @@ class RegexToNFA:
                 else:
                     self.checkStack.pop()
 
-            #Case 6: character is anything that we did not define should raise an exception that causes an error.
+            #Case 7: character is anything that we did not define should raise an exception that causes an error.
             else:
                 raise BaseException("Symbol '%s' is not allowed" % char)
             previous = char    #incrementing the previous at the end of each loop of scan to the next character
@@ -270,6 +274,7 @@ class RegexToNFA:
         
         self.nfa = self.automataStack.pop()             #retrieving the last automata created
         self.nfa.language = language                        #retrieving the language used in building the automata
+
 
     def addToOpStack(self, char):               #checking for the coming operator to be able to process it correctly.
         while(1):                       #looping on the opStack until it is empty
@@ -285,6 +290,7 @@ class RegexToNFA:
                 break
         self.opStack.append(char)
 
+
     def workOnOperator(self, operator):             #method for working on the operators that comes to it to determine what to do with it.
         if len(self.automataStack) == 0:                 #if the automataStack is empty then there is nothing to concat or nothing to OR then an exception will be raised.
             raise BaseException("Error processing operator '%s'. opStack is empty" % operator)
@@ -294,7 +300,12 @@ class RegexToNFA:
             firstInput = self.automataStack.pop()
             self.automataStack.append(createNFA.starStructure(firstInput))
 
-        #CASE 2: if the operator is concat or OR then it needs two inputs to work on. So it pops the first two inputs and save them and send each one fo them to the suitable structure.
+        #CASE 2: if the operator plus then it only needs one input from the automataStack so it pops from the automataStack and send it to createNFA with the star structure.
+        elif operator == self.plus:
+            firstInput = self.automataStack.pop()
+            self.automataStack.append(createNFA.plusStructure(firstInput))
+
+        #CASE 3: if the operator is concat or OR then it needs two inputs to work on. So it pops the first two inputs and save them and send each one fo them to the suitable structure.
         elif operator in self.operators:
             if len(self.automataStack) < 2:         #if the automataStack has less than two inouts and we need two inputs then an exception will be raised.
                 raise BaseException("Error processing operator '%s'. Inadequate operands" % operator)
@@ -311,6 +322,7 @@ class RegexToNFA:
     def displayNFA(self):
         self.nfa.display()
 
+#Class for building the DFA from the NFA that is created previously
 class DFAfromNFA:
 
     def __init__(self, nfa):
