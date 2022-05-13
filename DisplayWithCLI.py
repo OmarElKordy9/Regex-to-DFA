@@ -2,7 +2,7 @@ from RegexToDFA import *
 import sys
 
 def main():
-    inp = "(01*1)*1"                        #if the user didn't enter any input then this should be a dummy input to use
+    inp = "(0|1)*|01*0"                        #if the user didn't enter any input then this should be a dummy input to use
     if len(sys.argv)>1:                     #if the user entered an input then this input will be saved and sent to the functions
         inp = sys.argv[1]
     print ("Regular Expression: ", inp)     #first we print to the user regex that he entered
