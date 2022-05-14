@@ -1,14 +1,15 @@
 from os import popen
 import time
 
+
 class AutomataLanguage:
 
-    def __init__(self, language = set(['0', '1'])):  #method that defines the automata language start state and final state and the transition dictionary with the language and all the states.
+    def __init__(self, alphabet = set(['0', '1'])):  #method that defines the automata alphabet start state and final state and the transition dictionary with the alphabet and all the states.
         self.startState = None
         self.finalStates = []
         self.states = set()
         self.transitions = dict()
-        self.language = language
+        self.alphabet = alphabet
 
     def epsilon():
         return ":e:"
@@ -84,7 +85,7 @@ class AutomataLanguage:
         for i in list(self.states):
             changeName[i] = startNumber
             startNumber += 1
-        update = AutomataLanguage(self.language)
+        update = AutomataLanguage(self.alphabet)
         update.setStartState(changeName[self.startState])
         update.setFinalStates(changeName[self.finalStates[0]])
         for source, targets in self.transitions.items():
@@ -196,7 +197,7 @@ class RegexToNFA:
         self.scanBuildNFA()
 
     def scanBuildNFA(self):                                              #method that scan the regex and responsible for the logics of creating the NFA by storing the operators and the opened
-        language = set()                                                      #brackets in the opStack and also checks the brackets if they are balaned or not. The automataStack is responsible
+        alphabet = set()                                                      #brackets in the opStack and also checks the brackets if they are balaned or not. The automataStack is responsible
         self.opStack = []                                                      #for creating the automata step by step and putting them in the stack until an operation comes and collects them together
         self.checkStack = []                                                #then the new automata is added to the automataStack at the end.
         self.automataStack = []
@@ -208,14 +209,14 @@ class RegexToNFA:
             #CASE 1: character is alphabet ----- we check if the previous character is not dot and it is an alphabet or closed bracket or star to handle the case that the user
             #may write AB which means A.B, he may write (A)B which means (A).B, he may alsow write A*B which means A*.B
             if char in self.alphabet:
-                language.add(char)
-                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star]):
+                alphabet.add(char)
+                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star, self.plus]):
                     self.addToOpStack(self.concat)              #handling the concatination cases and sending the concat to another function to work on it
                 self.automataStack.append(createNFA.normalStructure(char))      #if it is character we build the NFA of that character and add it to the automataStack
 
             #Case 2: character is opened bracket ----- we check the concatination cases as explained before. 
             elif char  ==  self.openedBracket:
-                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star]):
+                if previous != self.concat and (previous in self.alphabet or previous in [self.closedBracket,self.star, self.plus]):
                     self.addToOpStack(self.concat)      #sending the concat character to another function to work on it.
                 self.opStack.append(char)                  #adding the opened bracket to the opStack to be accessed in another function
                 self.checkStack.append(char)            #adding the opened bracket also to the checkStack to check for the balance of the brackets later.
@@ -223,14 +224,14 @@ class RegexToNFA:
             #Case 3: character is star  ----- we check for the exceptions that may happen that causes errors.
             #Exceptions as .* or |* or (* or **
             elif char == self.star:
-                if previous in self.operators or previous  == self.openedBracket or previous == self.star:
+                if previous in self.operators or previous  == self.openedBracket or previous == self.star or previous == self.plus:
                     raise BaseException("Error processing '%s' after '%s'" % (char, previous))
                 self.workOnOperator(char)           #sending the star to another function to work on it.
 
              #Case 4: character is plus  ----- we check for the exceptions that may happen that causes errors.
             #Exceptions as .+ or |+ or (+ or ++
             elif char == self.plus:
-                if previous in self.operators or previous  == self.openedBracket or previous == self.plus:
+                if previous in self.operators or previous  == self.openedBracket or previous == self.plus or previous == self.plus:
                     raise BaseException("Error processing '%s' after '%s'" % (char, previous))
                 self.workOnOperator(char)           #sending the plus to another function to work on it.
 
@@ -273,7 +274,7 @@ class RegexToNFA:
             raise BaseException("Error processing, brackets are incorrect")
         
         self.nfa = self.automataStack.pop()             #retrieving the last automata created
-        self.nfa.language = language                        #retrieving the language used in building the automata
+        self.nfa.alphabet = alphabet                        #retrieving the alphabet used in building the automata
 
 
     def addToOpStack(self, char):               #checking for the coming operator to be able to process it correctly.
@@ -340,14 +341,14 @@ class DFAfromNFA:
         count = 1
         state1 = nfa.getEpsilonClosure(nfa.startState)          # combine the initial state with any other state with the transition epsilon
         eclose[nfa.startState] = state1                                    # dict of nfa states + eclosure
-        dfa = AutomataLanguage(nfa.language)
+        dfa = AutomataLanguage(nfa.alphabet)
         dfa.setStartState(count)
         states = [[state1, count]]                                              # one element dict of dfa states + eclosure
         eClosureStates[count] = state1                                    # all elements dict of dfa states + eclosure
         count +=  1
         while len(states) != 0:                         #loop on the states until they are all done
             [state, fromindex] = states.pop()   #get the first state with its index and pop it from the states to not be repeated again
-            for char in dfa.language:               #for each state we have, we loop on the characters and the alphabets that we have until we finish them.
+            for char in dfa.alphabet:               #for each state we have, we loop on the characters and the alphabets that we have until we finish them.
                 transStates = nfa.getStateTransitions(state, char)      #get the transition of the state that we have and save its target states in transStates.
                 for s in list(transStates)[:]:        #loop on the transStates
                     if s not in eclose:
@@ -365,6 +366,41 @@ class DFAfromNFA:
         for value, state in eClosureStates.items():                     #loop on the states at the end and any state that is final in the NFA, make it final in the DFA
             if nfa.finalStates[0] in state:
                 dfa.setFinalStates(value)
+
+        
+        #Handling the phi state cases
+        sourceCount = 0         #Define sourceCount that we will be used later in the handling of the cases. 
+        phiState = len(dfa.states)+1       #Add another phi state to the already existing states in the dfa
+        sources = []            #Define a list of sources to put inside it all the sources.
+        tempAlphabet = set.copy(dfa.alphabet)           #Copy the DFA alphabet to not make any changes in the already existing alphabet 
+        for source, targets in dfa.transitions.items():     #Loop on all the transitions that are already present in the dfa form the source to the target
+            sources.append(source)                  #Add all the states that are source to set sources (the states that have transition arrows coming out of it)
+            sourceCount += 1                               #Count the source states to be used and checked on it later
+            #Check for the length of targets for each state if it has targets (transition arrows out of it) less than number of our alphabet then handle this case
+            #CASE 1: that the source has targets but they are not complete and missing transitions
+            if (len(targets) < len(dfa.alphabet)): 
+                for i in range(len(tempAlphabet) - len(targets)):   #Get the number of the missing transitions and loop on it
+                    if source != phiState:          #check first if this source is not the phiState 
+                        #Now we need to know which characters are missing in the transitions
+                        convertToSet = set.union(*targets.values())         #First we put the dictionary values in a set to be able to access the elements inside of the dictionary
+                        #Then we subtract the elemnts that are already in the transitions from out alphabet to know the missing transitions and put the character correctly on the transition
+                        currentTarget = set(tempAlphabet) - set(convertToSet) 
+                        dfa.transitionStates(source, phiState, currentTarget)   #Then we make the transition from the source to the phiState with the currentTarget that is missing
+                firstCase = True                #Then we set that we entered in th first case to be able to handle and access the second case
+
+        #CASE 2: That the state doesn't have any targets so it is not considerd a source therefore not handled in th previous case.
+        #Then we check if the sources are less than the states to enter and handle this condition. 
+        if (sourceCount < len(dfa.states)):
+            temp_states = dfa.states.copy()     #At first we copy the sfa states to tempStates to not change anything in the dfa.states.
+            for state in temp_states:       #Loop on all the states in the dfa.
+                if not sources.__contains__(state):    #If we are at a state and this state is not in the sources set then this is the case we want to handle.
+                    if state != phiState:       #If this state is not the phiState
+                        for i in tempAlphabet:  #Then loop with the number of alphabet characters and make transition from this state to the phiState with the character.
+                            dfa.transitionStates(state, phiState, i)
+                       
+                    for i in tempAlphabet:  #Then if this state is actually the phiState then make the transition from the phiState to the phiState again as a loop with the all the characters.
+                        dfa.transitionStates(phiState, phiState, i)
+
         self.dfa = dfa
 
 
@@ -377,4 +413,3 @@ def drawGraph(AutomataLanguage, file = ""):
         raise BaseException("Error creating graph")
     finally:
         f.close()
-
