@@ -12,7 +12,7 @@ class AutomataLanguage:
         self.alphabet = alphabet
 
     def epsilon():
-        return ":e:"
+        return "ε"
 
     def setStartState(self, state):                                         #method which takes a state as a parameter and then makes it a start state by adding it to the startState attribute 
         self.startState = state                                                 #and adding this state to the set of states
