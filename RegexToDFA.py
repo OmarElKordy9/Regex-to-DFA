@@ -336,8 +336,8 @@ class DFAfromNFA:
         self.dfa.displayInCLI()
 
     def buildDFA(self, nfa):                            #Method that builds the dfa from the nfa and displays it and this will be the final step.
-        eClosureStates = dict()
-        eclose = dict()
+        eClosureStates = dict()                         #Dictionary which have the states combined from the NFA with a given label with the count.
+        eclose = dict()                                     #Dictionary that labels the states with its origin state and combine them together.
         count = 1
         state1 = nfa.getEpsilonClosure(nfa.startState)          # combine the initial state with any other state with the transition epsilon
         eclose[nfa.startState] = state1                                    # dict of nfa states + eclosure
@@ -386,7 +386,6 @@ class DFAfromNFA:
                         #Then we subtract the elemnts that are already in the transitions from out alphabet to know the missing transitions and put the character correctly on the transition
                         currentTarget = set(tempAlphabet) - set(convertToSet) 
                         dfa.transitionStates(source, phiState, currentTarget)   #Then we make the transition from the source to the phiState with the currentTarget that is missing
-                firstCase = True                #Then we set that we entered in th first case to be able to handle and access the second case
 
         #CASE 2: That the state doesn't have any targets so it is not considerd a source therefore not handled in th previous case.
         #Then we check if the sources are less than the states to enter and handle this condition. 
